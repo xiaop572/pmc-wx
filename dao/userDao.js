@@ -14,9 +14,9 @@ function queryUser(openid,cb){
     });
     connection.end();
 }
-function insetUser(openid,nickname,sex,province,city,country,headimgurl,cb){
-    var insertSql = "insert into wx_user (openid,nickname,sex,province,city,country,headimgurl) values(?,?,?,?,?,?,?);";
-    var params = [openid,nickname,sex,province,city,country,headimgurl];
+function insetUser(openid,nickname,sex,province,city,country,headimgurl,token,date,cb){
+    var insertSql = "insert into wx_user (openid,nickname,sex,province,city,country,headimgurl,access_token,token_time) values(?,?,?,?,?,?,?,?,?);";
+    var params = [openid,nickname,sex,province,city,country,headimgurl,token,date];
     var connection = dbutil.createConnection();
     connection.connect();
     connection.query(insertSql, params, function (error, result) {
