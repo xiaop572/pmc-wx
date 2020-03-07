@@ -45,6 +45,7 @@ function UpdateUserInfo(obj,cb){
     connection.end();
 }
 function queryUnseInfo(token,cb){
+    console.log(token,"伟民民")
     var querySql = "select * from wx_user where access_token=?;";
     var queryParams = [token];
     var connection = dbutil.createConnection();
@@ -59,4 +60,19 @@ function queryUnseInfo(token,cb){
     });
     connection.end();
 }
-module.exports = {"queryUser": queryUser,"insetUser":insetUser,"queryUnseInfo":queryUnseInfo,"UpdateUserInfo":UpdateUserInfo};
+function UpdateUserMobile(obj,cb){
+    var updateSql = 'UPDATE wx_user SET mobile=? WHERE access_token= ?'
+    var params = [obj.phone,obj.token];
+    var connection = dbutil.createConnection();
+    connection.connect();
+    connection.query(updateSql, params, function (error, result) {
+        if (error == null) {
+            cb(error,result)
+        } else {
+            cb(error)
+        }
+
+    });
+    connection.end();
+}
+module.exports = {"queryUser": queryUser,"insetUser":insetUser,"queryUnseInfo":queryUnseInfo,"UpdateUserInfo":UpdateUserInfo,"UpdateUserMobile":UpdateUserMobile};

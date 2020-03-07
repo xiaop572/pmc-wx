@@ -1,4 +1,4 @@
-var studentDao = require("../dao/userDao");
+var h5userDao = require("../dao/userDao");
 var globalConfig = require("../config");
 var loader = require("../loader");
 const network = require('request')
@@ -9,17 +9,16 @@ const jwt = require('jsonwebtoken');
 var path = new Map();
 //验证是否存在用户信息 并插入
 function userVerify(userinfo, tokenJson) {
-    studentDao.queryUser(userinfo.openid, function (result) {
+    h5userDao.queryUser(userinfo.openid, function (result) {
         //插入
         if (result.length === 0 && userinfo.openid) {
-            studentDao.insetUser(userinfo.openid, userinfo.nickname, userinfo.sex, userinfo.province, userinfo.city, userinfo.country, userinfo.headimgurl, tokenJson.token, tokenJson.date, function (result) {})
+            h5userDao.insetUser(userinfo.openid, userinfo.nickname, userinfo.sex, userinfo.province, userinfo.city, userinfo.country, userinfo.headimgurl, tokenJson.token, tokenJson.date, function (result) {})
         } else {
-            studentDao.UpdateUserInfo({
+            h5userDao.UpdateUserInfo({
                 openid: userinfo.openid,
                 token: tokenJson.token,
                 tokenTime: tokenJson.date
-            }, function (result) {
-            })
+            }, function (result) {})
         }
     })
 }
@@ -99,38 +98,104 @@ path.set("/h5_get_wx_access_token", h5_get_wx_access_token);
 //获取用户信息
 function h5_getUserInfo(request, response) {
     response.setHeader('Content-Type', 'text/palin; charset=utf-8');
-    var obj = "";
-    request.on('data', function (data) {
-        obj += data;
-    })
-    request.on('end', function () {
-        var dataObj = JSON.parse(obj);
-        new Promise((resolve, reject) => {
-            studentDao.queryUnseInfo(dataObj.localToken, (res) => {
-                if (res && res.length == 0 || +new Date() - 259200000 > res[0].token_time) {
-                    response.write(JSON.stringify({
-                        code: "101",
-                        msg: "token过期"
-                    }))
-                    response.end()
-                } else {
-                    resolve(res)
-                }
-            });
-        }).then(res => {
-            var dataObj=res[0];
-            delete dataObj['openid'];
-            delete dataObj['token_time'];
-            response.write(JSON.stringify(dataObj))
-            response.end()
-        }).catch(e => {
-            response.write(JSON.stringify({
-                code: "101",
-                msg: "没有该用户"
-            }))
-            response.end()
-        })
+    var localToken = request.headers.token;
+    console.log(request.headers)
+    // var dataObj = JSON.parse(obj);
+    new Promise((resolve, reject) => {
+        h5userDao.queryUnseInfo(localToken, (res) => {
+            if (res && res.length == 0 || +new Date() - res[0].token_time > 259200000) {
+                response.write(JSON.stringify({
+                    code: "101",
+                    msg: "token过期或没有该用户"
+                }))
+                response.end()
+            } else {
+                resolve(res)
+            }
+        });
+    }).then(res => {
+        var dataObj = res[0];
+        delete dataObj['openid'];
+        delete dataObj['token_time'];
+        response.write(JSON.stringify(dataObj))
+        response.end()
+    }).catch(e => {
+        response.write(JSON.stringify({
+            code: "101",
+            msg: "没有该用户"
+        }))
+        response.end()
     })
 }
 path.set("/h5_getUserInfo", h5_getUserInfo);
+
+function h5_isMobile(request, response) {
+    response.setHeader('Content-Type', 'text/palin; charset=utf-8');
+    const localToken=request.headers.token;
+    new Promise((resolve, reject) => {
+        h5userDao.queryUnseInfo(localToken, (res) => {
+            resolve(res)
+        });
+    }).then(res => {
+        if (!res[0].mobile) {
+            response.write(JSON.stringify({
+                code: "400",
+                msg: "手机号不存在"
+            }))
+            response.end()
+        } else {
+            response.write(JSON.stringify({
+                code: "200",
+                msg: "手机号已存在"
+            }))
+            response.end()
+        }
+    }).catch(e => {
+        response.write(JSON.stringify({
+            code: "400",
+            msg: "手机号不存在"
+        }))
+        response.end()
+    })
+}
+path.set("/h5_isMobile", h5_isMobile)
+
+function h5_setMobile(request,response) {
+    response.setHeader('Content-Type', 'text/palin; charset=utf-8');
+    var obj="";
+    request.on('data',function(data){
+        obj+=data;
+    })
+    request.on('end',function(){
+        var dataObj=JSON.parse(obj);
+        var token=request.headers.token;
+        if(dataObj && !dataObj.phone){
+            response.write(JSON.stringify({
+                code: "400",
+                msg: "手机号不正确"
+            }))
+            response.end()
+        }
+        h5userDao.UpdateUserMobile({
+            token: token,
+            phone:dataObj.phone
+        }, function (error,result) {
+            console.log(error)
+            if(error==null){
+               response.write(JSON.stringify({
+                   code:'200',
+                   msg:'绑定手机成功'
+               })) 
+               response.end()
+            }else{
+                response.write(JSON.stringify({
+                    code:'400',
+                    msg:error
+                }))
+                response.end()
+            }
+        })
+    })
+}
+path.set("/h5_setMobile", h5_setMobile)
 module.exports.path = path;
